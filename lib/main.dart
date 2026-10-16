@@ -1,25 +1,22 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
-import 'screens/map_screen.dart';
+import 'screens/survey_screen.dart';
 import 'services/auth_service.dart';
+import 'theme/app_theme.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const TauruApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class TauruApp extends StatelessWidget {
+  const TauruApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Surveyor App',
+      title: 'Tauru App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3B5BDB)),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
+      theme: AppTheme.light,
       home: FutureBuilder<Map<String, dynamic>?>(
         future: AuthService.getSavedUser(),
         builder: (context, snapshot) {
@@ -31,7 +28,7 @@ class MyApp extends StatelessWidget {
 
           final user = snapshot.data;
           if (user != null) {
-            return MapScreen(user: user);
+            return SurveyScreen(user: user);
           }
 
           return const LoginScreen();

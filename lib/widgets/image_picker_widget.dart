@@ -1,31 +1,29 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../theme/app_theme.dart';
 
 class ImagePickerWidget extends StatelessWidget {
+  final String label;
   final File? image;
-  final String? imageUrl;
   final ValueChanged<File?> onImageChanged;
-  final VoidCallback? onRemoveImageUrl;
+  final double height;
 
   const ImagePickerWidget({
     super.key,
+    required this.label,
     required this.image,
-    this.imageUrl,
     required this.onImageChanged,
-    this.onRemoveImageUrl,
+    this.height = 150,
   });
 
-  Future<void> _pick(BuildContext context, ImageSource source) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
+  Future<void> _pick(ImageSource source) async {
+    final picked = await ImagePicker().pickImage(
       source: source,
       imageQuality: 85,
-      maxWidth: 1200,
+      maxWidth: 1600,
     );
-    if (picked != null) {
-      onImageChanged(File(picked.path));
-    }
+    if (picked != null) onImageChanged(File(picked.path));
   }
 
   void _showOptions(BuildContext context) {
@@ -34,179 +32,163 @@ class ImagePickerWidget extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.black12,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'Add Survey Photo',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFEEF2FF),
-                child: Icon(Icons.camera_alt, color: Color(0xFF3B5BDB)),
-              ),
-              title: const Text('Take Photo'),
-              onTap: () {
-                Navigator.pop(context);
-                _pick(context, ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFEEF2FF),
-                child: Icon(Icons.photo_library, color: Color(0xFF3B5BDB)),
-              ),
-              title: const Text('Choose from Gallery'),
-              onTap: () {
-                Navigator.pop(context);
-                _pick(context, ImageSource.gallery);
-              },
-            ),
-            if (image != null || (imageUrl != null && imageUrl!.trim().isNotEmpty))
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFFEEEE),
-                  child: Icon(Icons.delete_outline, color: Colors.redAccent),
+      builder:
+          (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-                title: const Text(
-                  'Remove Photo',
-                  style: TextStyle(color: Colors.redAccent),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  onImageChanged(null);
-                  if (onRemoveImageUrl != null) {
-                    onRemoveImageUrl!();
-                  }
-                },
-              ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppColors.surfaceTint,
+                    child: Icon(Icons.camera_alt, color: AppColors.primary),
+                  ),
+                  title: const Text('Take Photo'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _pick(ImageSource.camera);
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppColors.surfaceTint,
+                    child: Icon(Icons.photo_library, color: AppColors.primary),
+                  ),
+                  title: const Text('Choose from Gallery'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _pick(ImageSource.gallery);
+                  },
+                ),
+                if (image != null)
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFFFFEEEE),
+                      child: Icon(Icons.delete_outline, color: AppColors.error),
+                    ),
+                    title: const Text(
+                      'Remove Photo',
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      onImageChanged(null);
+                    },
+                  ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
     );
-  }
-
-  String _buildFullUrl(String url) {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-    final cleanPath = url.startsWith('/') ? url.substring(1) : url;
-    return 'https://cdn.omgauamrit.in/$cleanPath';
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = image != null || (imageUrl != null && imageUrl!.trim().isNotEmpty);
-    return GestureDetector(
-      onTap: () => _showOptions(context),
-      child: Container(
-        height: 160,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8F9FF),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: const Color(0xFFCDD5F3),
-            width: 1.5,
-          ),
-        ),
-        child: !hasImage
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2FF),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(
-                      Icons.add_a_photo_outlined,
-                      size: 28,
-                      color: Color(0xFF3B5BDB),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Add Survey Photo',
-                    style: TextStyle(
-                      color: Color(0xFF3B5BDB),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Tap to take or choose image',
-                    style: TextStyle(color: Colors.black38, fontSize: 12),
-                  ),
-                ],
-              )
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(13),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (image != null)
-                      Image.file(image!, fit: BoxFit.cover)
-                    else if (imageUrl != null && imageUrl!.trim().isNotEmpty)
-                      Image.network(
-                        _buildFullUrl(imageUrl!),
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              size: 40,
-                              color: Colors.redAccent,
-                            ),
-                          );
-                        },
-                      ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: GestureDetector(
-                        onTap: () => _showOptions(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.edit,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
                 ),
               ),
-      ),
+            ),
+            if (image != null)
+              const Icon(Icons.check_circle, size: 16, color: AppColors.success),
+          ],
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => _showOptions(context),
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              color: AppColors.fieldFill,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: image != null ? AppColors.primary : AppColors.border,
+                width: 1.5,
+              ),
+            ),
+            child:
+                image == null
+                    ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceTint,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.add_a_photo_outlined,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Tap to add',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    )
+                    : ClipRRect(
+                      borderRadius: BorderRadius.circular(13),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.file(image!, fit: BoxFit.cover),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                Icons.edit,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+          ),
+        ),
+      ],
     );
   }
 }

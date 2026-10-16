@@ -1,4 +1,4 @@
-# maplocationselector
+# tauruapp
 
 A new Flutter project.
 

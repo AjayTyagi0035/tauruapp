@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_text_field.dart';
-import 'map_screen.dart';
+import '../theme/app_theme.dart';
+import 'survey_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -65,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen>
     if (result.success) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => MapScreen(user: result.user!),
+          builder: (_) => SurveyScreen(user: result.user!),
         ),
       );
     } else {
@@ -83,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen>
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -97,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen>
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2FF),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -119,21 +120,21 @@ class _LoginScreenState extends State<LoginScreen>
                         height: 100,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF3B5BDB), Color(0xFF74C0FC)],
+                            colors: [AppColors.primary, AppColors.primaryLight],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF3B5BDB).withAlpha(76),
+                              color: AppColors.primary.withAlpha(76),
                               blurRadius: 24,
                               offset: const Offset(0, 10),
                             ),
                           ],
                         ),
                         child: const Icon(
-                          Icons.map_outlined,
+                          Icons.home_work_outlined,
                           size: 52,
                           color: Colors.white,
                         ),
@@ -144,18 +145,18 @@ class _LoginScreenState extends State<LoginScreen>
 
                     // Title
                     const Text(
-                      'Surveyor Login',
+                      'Tauru App',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A237E),
+                        color: AppColors.primaryDark,
                         letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Sign in to access your survey tools',
+                      'Sign in to start property surveys',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -214,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 _obscurePassword
                                     ? Icons.visibility_off_outlined
                                     : Icons.visibility_outlined,
-                                color: const Color(0xFF3B5BDB),
+                                color: AppColors.primary,
                               ),
                               onPressed: () => setState(
                                 () => _obscurePassword = !_obscurePassword,
@@ -239,13 +240,13 @@ class _LoginScreenState extends State<LoginScreen>
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3B5BDB),
+                                backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 disabledBackgroundColor:
-                                    const Color(0xFF3B5BDB).withAlpha(128),
+                                    AppColors.primary.withAlpha(128),
                                 elevation: 4,
                                 shadowColor:
-                                    const Color(0xFF3B5BDB).withAlpha(76),
+                                    AppColors.primary.withAlpha(76),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),

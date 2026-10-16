@@ -1,4 +1,4 @@
-package com.example.maplocationselector
+package com.example.tauruapp
 
 import io.flutter.embedding.android.FlutterActivity
 
