@@ -7,7 +7,8 @@ import 'api_config.dart';
 
 /// Talks to the Tauru endpoints of the admin backend (`/api/tauru`).
 class SurveyService {
-  /// Uploads a photo to the "tauruimage" blob container; returns its URL.
+  /// Uploads a photo to the "tauruimage" blob container; returns the stored
+  /// path (`tauruimage/blob`). Display it with [ApiConfig.photoUrl].
   static Future<String?> uploadPhoto(File file) async {
     try {
       final request =
@@ -20,7 +21,7 @@ class SurveyService {
         debugPrint('Photo upload failed: ${response.statusCode} ${response.body}');
         return null;
       }
-      return (jsonDecode(response.body) as Map<String, dynamic>)['imageUrl']
+      return (jsonDecode(response.body) as Map<String, dynamic>)['path']
           as String?;
     } catch (e) {
       debugPrint('Photo upload error: $e');

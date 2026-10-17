@@ -10,4 +10,13 @@ class ApiConfig {
       Uri.parse('$baseUrl$path').replace(queryParameters: query);
 
   static const Duration timeout = Duration(seconds: 30);
+
+  /// Photos are stored as `container/blob` and served through this CDN.
+  static const String photoCdnBaseUrl = 'https://cdn.omgauamrit.in';
+
+  /// Full URL for a stored photo path (older rows may hold a full URL).
+  static String photoUrl(String path) =>
+      path.startsWith(RegExp(r'https?://'))
+          ? path
+          : '$photoCdnBaseUrl/${path.replaceFirst(RegExp(r'^/+'), '')}';
 }

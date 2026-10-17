@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/api_config.dart';
 import '../theme/app_theme.dart';
 
-/// Opens a full-screen, zoomable view of a remote photo. The image is only
-/// downloaded when this is called.
-Future<void> showNetworkImageDialog(BuildContext context, String url, String title) {
+/// Opens a full-screen, zoomable view of a stored photo (`container/blob`
+/// path, served via the CDN). The image is only downloaded when this is called.
+Future<void> showNetworkImageDialog(BuildContext context, String path, String title) {
+  final url = ApiConfig.photoUrl(path);
   return showDialog<void>(
     context: context,
     builder:
