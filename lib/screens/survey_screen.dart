@@ -47,6 +47,9 @@ class _SurveyScreenState extends State<SurveyScreen> {
   static const double _mapZoom = 19;
   static const _locationStep = 4;
 
+  /// Fixed administrative values for this app; shown read-only in the form.
+  static const _fixedValues = {'district': 'Nuh', 'ulbName': 'Tauru'};
+
   static const _upperFloorKeys = [
     'firstFloorArea',
     'secondFloorArea',
@@ -119,6 +122,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
   @override
   void initState() {
     super.initState();
+    _applyFixedValues();
     for (final key in [
       'frontWidthofPlotInFeet',
       'depthofPlotInFeet',
@@ -137,6 +141,10 @@ class _SurveyScreenState extends State<SurveyScreen> {
     }
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _applyFixedValues() {
+    _fixedValues.forEach((key, value) => _c[key]!.text = value);
   }
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -374,6 +382,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
       _maxReachedStep = 0;
     });
     _formKey.currentState?.reset();
+    _applyFixedValues();
     _useCurrentLocation(silent: true);
   }
 
@@ -518,9 +527,9 @@ class _SurveyScreenState extends State<SurveyScreen> {
       title: 'Administrative Area',
       icon: Icons.location_city_outlined,
       children: [
-        _field('district', 'District', icon: Icons.map_outlined, required: true),
+        _field('district', 'District', icon: Icons.map_outlined, required: true, readOnly: true),
         _gap(),
-        _field('ulbName', 'ULB Name', icon: Icons.account_balance_outlined, required: true),
+        _field('ulbName', 'ULB Name', icon: Icons.account_balance_outlined, required: true, readOnly: true),
         _gap(),
         _field('wardNoOrName', 'Ward No. / Name', icon: Icons.grid_view_outlined, required: true),
         _gap(),
