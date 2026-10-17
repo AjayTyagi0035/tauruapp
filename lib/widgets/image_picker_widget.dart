@@ -3,6 +3,63 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 
+/// Opens a full-screen, zoomable view of a remote photo. The image is only
+/// downloaded when this is called.
+Future<void> showNetworkImageDialog(BuildContext context, String url, String title) {
+  return showDialog<void>(
+    context: context,
+    builder:
+        (dialogContext) => Dialog(
+          insetPadding: const EdgeInsets.all(12),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
+              ),
+              Flexible(
+                child: InteractiveViewer(
+                  maxScale: 5,
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    loadingBuilder:
+                        (_, child, progress) =>
+                            progress == null
+                                ? child
+                                : const SizedBox(
+                                  height: 240,
+                                  child: Center(child: CircularProgressIndicator()),
+                                ),
+                    errorBuilder:
+                        (_, __, ___) => const SizedBox(
+                          height: 240,
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.broken_image_outlined, size: 40, color: AppColors.textMuted),
+                                SizedBox(height: 8),
+                                Text('Could not load photo', style: TextStyle(color: AppColors.textMuted)),
+                              ],
+                            ),
+                          ),
+                        ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+  );
+}
+
 class ImagePickerWidget extends StatelessWidget {
   final String label;
   final File? image;
@@ -64,6 +121,18 @@ class ImagePickerWidget extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (image == null && (imageUrl?.isNotEmpty ?? false))
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: AppColors.surfaceTint,
+                      child: Icon(Icons.visibility_outlined, color: AppColors.primary),
+                    ),
+                    title: const Text('View Saved Photo'),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      showNetworkImageDialog(context, imageUrl!, label);
+                    },
+                  ),
                 ListTile(
                   leading: const CircleAvatar(
                     backgroundColor: AppColors.surfaceTint,
@@ -177,20 +246,28 @@ class ImagePickerWidget extends StatelessWidget {
                           if (image != null)
                             Image.file(image!, fit: BoxFit.cover)
                           else
-                            Image.network(
-                              imageUrl!,
-                              fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (_, child, progress) =>
-                                      progress == null
-                                          ? child
-                                          : const Center(
-                                            child: CircularProgressIndicator(strokeWidth: 2),
-                                          ),
-                              errorBuilder:
-                                  (_, __, ___) => const Center(
-                                    child: Icon(Icons.broken_image_outlined, color: AppColors.textMuted),
+                            // Saved photos are not downloaded until the user
+                            // asks, to avoid blob egress cost on every open.
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.cloud_done_outlined, color: AppColors.success, size: 26),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Photo saved',
+                                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                ),
+                                const SizedBox(height: 6),
+                                FilledButton.tonalIcon(
+                                  onPressed: () => showNetworkImageDialog(context, imageUrl!, label),
+                                  icon: const Icon(Icons.visibility_outlined, size: 16),
+                                  label: const Text('View'),
+                                  style: FilledButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14),
                                   ),
+                                ),
+                              ],
                             ),
                           Positioned(
                             top: 8,

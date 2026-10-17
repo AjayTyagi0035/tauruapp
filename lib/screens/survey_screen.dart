@@ -49,6 +49,13 @@ class SurveyScreen extends StatefulWidget {
 class _SurveyScreenState extends State<SurveyScreen> {
   static const _defaultCenter = LatLng(28.2105, 76.9478); // Tauru
   static const double _mapZoom = 19;
+
+  // Tauru drone tiles (same source as the admin portal's Tauru Map);
+  // published for zoom 12–20, upscaled beyond that.
+  static const _droneTileUrl =
+      'https://cdn.omgauamrit.in/taurudrone/tilestauru/{z}/{x}/{y}.jpg';
+  static const _droneMinZoom = 12;
+  static const _droneMaxNativeZoom = 20;
   static const _locationStep = 4;
 
   /// Fixed administrative values for this app; shown read-only in the form.
@@ -122,6 +129,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
 
   LatLng? _location;
   bool _showMap = false;
+  bool _showDrone = true;
   bool _isLocating = false;
 
   int _currentStep = 0;
@@ -1047,7 +1055,32 @@ class _SurveyScreenState extends State<SurveyScreen> {
                         userAgentPackageName: 'com.example.tauruapp',
                         maxZoom: 22,
                       ),
+                      if (_showDrone)
+                        TileLayer(
+                          urlTemplate: _droneTileUrl,
+                          userAgentPackageName: 'com.example.tauruapp',
+                          minZoom: _droneMinZoom.toDouble(),
+                          maxNativeZoom: _droneMaxNativeZoom,
+                          maxZoom: 22,
+                          // Outside the drone coverage tiles 404; just leave them blank.
+                          errorTileCallback: (_, __, ___) {},
+                        ),
                     ],
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: FilterChip(
+                      selected: _showDrone,
+                      onSelected: (v) => setState(() => _showDrone = v),
+                      avatar: const Icon(Icons.satellite_alt_outlined, size: 16),
+                      label: const Text('Drone', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      showCheckmark: false,
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: Colors.white,
+                      selectedColor: AppColors.surfaceTint,
+                      side: const BorderSide(color: AppColors.primary),
+                    ),
                   ),
                   const IgnorePointer(
                     child: Center(

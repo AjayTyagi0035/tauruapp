@@ -265,6 +265,10 @@ class _RecordCard extends StatelessWidget {
       if (record.wardNoOrName?.isNotEmpty ?? false) 'Ward ${record.wardNoOrName}',
       if (record.mohallaName?.isNotEmpty ?? false) record.mohallaName!,
     ].join(' · ');
+    final photoCount =
+        [record.frontPhotoUrl, record.rightSidePhotoUrl, record.leftSidePhotoUrl]
+            .where((u) => u?.isNotEmpty ?? false)
+            .length;
 
     return Material(
       color: Colors.white,
@@ -280,21 +284,9 @@ class _RecordCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child:
-                      (record.frontPhotoUrl?.isNotEmpty ?? false)
-                          ? Image.network(
-                            record.frontPhotoUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const _Thumb(),
-                          )
-                          : const _Thumb(),
-                ),
-              ),
+              // No photo thumbnails here: photos are only fetched on "View"
+              // inside the edit form, to avoid blob egress cost.
+              _Thumb(photoCount: photoCount),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -342,13 +334,37 @@ class _RecordCard extends StatelessWidget {
 }
 
 class _Thumb extends StatelessWidget {
-  const _Thumb();
+  final int photoCount;
+
+  const _Thumb({required this.photoCount});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.surfaceTint,
-      child: const Icon(Icons.home_work_outlined, color: AppColors.primary),
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.home_work_outlined, color: AppColors.primary, size: 22),
+          const SizedBox(height: 3),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.photo_camera_outlined, size: 11, color: AppColors.textMuted),
+              const SizedBox(width: 2),
+              Text(
+                '$photoCount/3',
+                style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
