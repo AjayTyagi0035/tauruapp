@@ -1,4 +1,4 @@
-/// Mirrors the `public.surveyor_s_submissions` table.
+/// Mirrors the `public."Taru"` table (served by `/api/tauru`).
 /// JSON keys match the column names exactly (including case).
 class SurveySubmission {
   final int? id;
@@ -49,6 +49,7 @@ class SurveySubmission {
   final String? sewerConnection;
 
   final String? submittedAt;
+  final int? submittedBy;
 
   final String? remarks;
 
@@ -95,6 +96,7 @@ class SurveySubmission {
     this.waterConnection,
     this.sewerConnection,
     this.submittedAt,
+    this.submittedBy,
     this.remarks,
     this.updatedAt,
     this.updatedBy,
@@ -148,6 +150,7 @@ class SurveySubmission {
       waterConnection: _toStr(json['waterConnection']),
       sewerConnection: _toStr(json['sewerConnection']),
       submittedAt: _toStr(json['submittedAt']),
+      submittedBy: _toInt(json['submittedBy']),
       remarks: _toStr(json['remarks']),
       updatedAt:
           json['updatedAt'] == null
@@ -197,6 +200,7 @@ class SurveySubmission {
       'waterConnection': waterConnection,
       'sewerConnection': sewerConnection,
       'submittedAt': submittedAt,
+      if (submittedBy != null) 'submittedBy': submittedBy,
       'remarks': remarks,
       if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
       if (updatedBy != null) 'updatedBy': updatedBy,

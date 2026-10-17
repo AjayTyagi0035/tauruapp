@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api_config.dart';
 
 class AuthService {
-  static const String _loginUrl =
-      'https://adminsurveyapp.vercel.app/api/auth/surveyor-login';
   static const String _userKey = 'saved_user';
 
   static Future<AuthResult> login({
@@ -15,7 +14,7 @@ class AuthService {
     try {
       final response = await http
           .post(
-            Uri.parse(_loginUrl),
+            ApiConfig.uri('/api/auth/surveyor-login'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({'mobile': mobile, 'password': password}),
           )
@@ -60,7 +59,11 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       final jsonStr = prefs.getString(_userKey);
       if (jsonStr == null) return null;
-      return jsonDecode(jsonStr) as Map<String, dynamic>;
+      final user = jsonDecode(jsonStr) as Map<String, dynamic>;
+      // Sessions saved before the login API was bound have no id;
+      // records can't be attributed to them, so require a fresh login.
+      if (user['id'] == null) return null;
+      return user;
     } catch (_) {
       return null;
     }

@@ -6,6 +6,11 @@ import '../theme/app_theme.dart';
 class ImagePickerWidget extends StatelessWidget {
   final String label;
   final File? image;
+
+  /// Already-uploaded photo, shown when no new [image] has been picked.
+  final String? imageUrl;
+
+  /// Called with the new file, or null when the photo is removed.
   final ValueChanged<File?> onImageChanged;
   final double height;
 
@@ -14,8 +19,11 @@ class ImagePickerWidget extends StatelessWidget {
     required this.label,
     required this.image,
     required this.onImageChanged,
+    this.imageUrl,
     this.height = 150,
   });
+
+  bool get _hasPhoto => image != null || (imageUrl?.isNotEmpty ?? false);
 
   Future<void> _pick(ImageSource source) async {
     final picked = await ImagePicker().pickImage(
@@ -78,7 +86,7 @@ class ImagePickerWidget extends StatelessWidget {
                     _pick(ImageSource.gallery);
                   },
                 ),
-                if (image != null)
+                if (_hasPhoto)
                   ListTile(
                     leading: const CircleAvatar(
                       backgroundColor: Color(0xFFFFEEEE),
@@ -117,7 +125,7 @@ class ImagePickerWidget extends StatelessWidget {
                 ),
               ),
             ),
-            if (image != null)
+            if (_hasPhoto)
               const Icon(Icons.check_circle, size: 16, color: AppColors.success),
           ],
         ),
@@ -130,12 +138,12 @@ class ImagePickerWidget extends StatelessWidget {
               color: AppColors.fieldFill,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: image != null ? AppColors.primary : AppColors.border,
+                color: _hasPhoto ? AppColors.primary : AppColors.border,
                 width: 1.5,
               ),
             ),
             child:
-                image == null
+                !_hasPhoto
                     ? Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -166,7 +174,24 @@ class ImagePickerWidget extends StatelessWidget {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Image.file(image!, fit: BoxFit.cover),
+                          if (image != null)
+                            Image.file(image!, fit: BoxFit.cover)
+                          else
+                            Image.network(
+                              imageUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder:
+                                  (_, child, progress) =>
+                                      progress == null
+                                          ? child
+                                          : const Center(
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          ),
+                              errorBuilder:
+                                  (_, __, ___) => const Center(
+                                    child: Icon(Icons.broken_image_outlined, color: AppColors.textMuted),
+                                  ),
+                            ),
                           Positioned(
                             top: 8,
                             right: 8,

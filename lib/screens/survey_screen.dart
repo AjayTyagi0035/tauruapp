@@ -13,6 +13,7 @@ import '../theme/app_theme.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/image_picker_widget.dart';
 import '../widgets/option_selector.dart';
+import 'history_screen.dart';
 import 'login_screen.dart';
 
 class _StepInfo {
@@ -36,7 +37,10 @@ const _steps = [
 class SurveyScreen extends StatefulWidget {
   final Map<String, dynamic> user;
 
-  const SurveyScreen({super.key, required this.user});
+  /// When set, the form opens pre-filled and saving updates this record.
+  final SurveySubmission? initial;
+
+  const SurveyScreen({super.key, required this.user, this.initial});
 
   @override
   State<SurveyScreen> createState() => _SurveyScreenState();
@@ -111,6 +115,11 @@ class _SurveyScreenState extends State<SurveyScreen> {
   File? _rightSidePhoto;
   File? _leftSidePhoto;
 
+  // Already-uploaded photos of the record being edited.
+  String? _frontPhotoUrl;
+  String? _rightSidePhotoUrl;
+  String? _leftSidePhotoUrl;
+
   LatLng? _location;
   bool _showMap = false;
   bool _isLocating = false;
@@ -122,6 +131,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
   @override
   void initState() {
     super.initState();
+    final initial = widget.initial;
+    if (initial != null) _prefill(initial);
     _applyFixedValues();
     for (final key in [
       'frontWidthofPlotInFeet',
@@ -131,7 +142,59 @@ class _SurveyScreenState extends State<SurveyScreen> {
     ]) {
       _c[key]!.addListener(_recomputeAreas);
     }
-    _useCurrentLocation(silent: true);
+    if (_location == null) _useCurrentLocation(silent: true);
+  }
+
+  bool get _isEdit => widget.initial != null;
+
+  void _prefill(SurveySubmission s) {
+    void set(String key, Object? value) {
+      if (value == null) return;
+      _c[key]!.text = value is double ? _format(value) : '$value';
+    }
+
+    set('wardNoOrName', s.wardNoOrName);
+    set('mohallaName', s.mohallaName);
+    set('propertyId', s.propertyId);
+    set('houseNo', s.houseNo);
+    set('ownerName', s.ownerName);
+    set('fatherOrHusbandName', s.fatherOrHusbandName);
+    set('membersInHouse', s.membersInHouse);
+    set('mobileNo', s.mobileNo);
+    set('address', s.address);
+    set('ifmixed', s.ifmixed);
+    set('frontWidthofPlotInFeet', s.frontWidthofPlotInFeet);
+    set('depthofPlotInFeet', s.depthofPlotInFeet);
+    set('totalAreaInFeet', s.totalAreaInFeet);
+    set('builtUpArea', s.builtUpArea);
+    set('openArea', s.openArea);
+    set('firstFloorArea', s.firstFloorArea);
+    set('secondFloorArea', s.secondFloorArea);
+    set('thirdFloorArea', s.thirdFloorArea);
+    set('fourthFloorArea', s.fourthFloorArea);
+    set('commercialArea', s.commercialArea);
+    set('totalBuiltUpArea', s.totalBuiltUpArea);
+    set('remarks', s.remarks);
+
+    _choices
+      ..['natureOfHouse'] = s.natureOfHouse
+      ..['WidthofRoadInFront'] = s.widthofRoadInFront
+      ..['Typeofconstruction'] = s.typeofconstruction
+      ..['Useofhouse'] = s.useofhouse
+      ..['occupancyStatus'] = s.occupancyStatus
+      ..['floorNo'] = s.floorNo
+      ..['waterConnection'] = s.waterConnection
+      ..['sewerConnection'] = s.sewerConnection;
+
+    _frontPhotoUrl = s.frontPhotoUrl;
+    _rightSidePhotoUrl = s.rightSidePhotoUrl;
+    _leftSidePhotoUrl = s.leftSidePhotoUrl;
+
+    if (s.dataLat != null && s.dataLng != null) {
+      _location = LatLng(s.dataLat!, s.dataLng!);
+    }
+    // Every step already has data, so allow jumping straight to any of them.
+    _maxReachedStep = _steps.length - 1;
   }
 
   @override
@@ -314,14 +377,26 @@ class _SurveyScreenState extends State<SurveyScreen> {
       dataLng: _location?.longitude,
       waterConnection: _choices['waterConnection'],
       sewerConnection: _choices['sewerConnection'],
-      submittedAt: DateTime.now().toIso8601String(),
+      submittedBy: int.tryParse('${widget.user['id']}'),
       remarks: _text('remarks'),
       floorNo: _choices['floorNo'],
     );
   }
 
-  Future<String?> _upload(File? file) async =>
-      file == null ? null : SurveyService.uploadPhoto(file);
+  List<_PhotoSlot> get _photoSlots => [
+    _PhotoSlot('Front photo', () => _frontPhoto, (url) {
+      _frontPhotoUrl = url;
+      _frontPhoto = null;
+    }),
+    _PhotoSlot('Right side photo', () => _rightSidePhoto, (url) {
+      _rightSidePhotoUrl = url;
+      _rightSidePhoto = null;
+    }),
+    _PhotoSlot('Left side photo', () => _leftSidePhoto, (url) {
+      _leftSidePhotoUrl = url;
+      _leftSidePhoto = null;
+    }),
+  ];
 
   Future<void> _submit() async {
     if (_isSubmitting) return;
@@ -333,33 +408,40 @@ class _SurveyScreenState extends State<SurveyScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      final frontUrl = await _upload(_frontPhoto);
-      final rightUrl = await _upload(_rightSidePhoto);
-      final leftUrl = await _upload(_leftSidePhoto);
-
-      final uploadFailed =
-          (_frontPhoto != null && frontUrl == null) ||
-          (_rightSidePhoto != null && rightUrl == null) ||
-          (_leftSidePhoto != null && leftUrl == null);
-      if (uploadFailed) {
-        _showSnack('Photo upload failed. Please try again.', AppColors.error);
-        return;
+      // Upload newly picked photos; keep the existing URL otherwise. Once a
+      // photo is uploaded its URL is kept, so a retry doesn't upload it again.
+      for (final slot in _photoSlots) {
+        final file = slot.file();
+        if (file == null) continue;
+        final url = await SurveyService.uploadPhoto(file);
+        if (!mounted) return;
+        if (url == null) {
+          _showSnack('${slot.label} upload failed. Please try again.', AppColors.error);
+          return;
+        }
+        setState(() => slot.uploaded(url));
       }
 
-      final ok = await SurveyService.submitSurvey(
-        _buildSubmission(
-          frontPhotoUrl: frontUrl,
-          rightSidePhotoUrl: rightUrl,
-          leftSidePhotoUrl: leftUrl,
-        ),
+      final submission = _buildSubmission(
+        frontPhotoUrl: _frontPhotoUrl,
+        rightSidePhotoUrl: _rightSidePhotoUrl,
+        leftSidePhotoUrl: _leftSidePhotoUrl,
       );
+      final error =
+          _isEdit
+              ? await SurveyService.updateSurvey(widget.initial!.id!, submission)
+              : await SurveyService.submitSurvey(submission);
       if (!mounted) return;
 
-      if (!ok) {
-        _showSnack('Failed to submit survey.', AppColors.error);
+      if (error != null) {
+        _showSnack(error, AppColors.error);
         return;
       }
 
+      if (_isEdit) {
+        Navigator.of(context).pop(true);
+        return;
+      }
       await _showSuccessDialog();
       _resetForm();
     } finally {
@@ -376,6 +458,9 @@ class _SurveyScreenState extends State<SurveyScreen> {
       _frontPhoto = null;
       _rightSidePhoto = null;
       _leftSidePhoto = null;
+      _frontPhotoUrl = null;
+      _rightSidePhotoUrl = null;
+      _leftSidePhotoUrl = null;
       _location = null;
       _showMap = false;
       _currentStep = 0;
@@ -441,6 +526,12 @@ class _SurveyScreenState extends State<SurveyScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
+  }
+
+  void _openHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => HistoryScreen(user: widget.user)),
+    );
   }
 
   void _showProfileSheet() {
@@ -797,8 +888,12 @@ class _SurveyScreenState extends State<SurveyScreen> {
             ImagePickerWidget(
               label: 'Front Photo',
               image: _frontPhoto,
+              imageUrl: _frontPhotoUrl,
               height: 180,
-              onImageChanged: (f) => setState(() => _frontPhoto = f),
+              onImageChanged: (f) => setState(() {
+                _frontPhoto = f;
+                if (f == null) _frontPhotoUrl = null;
+              }),
             ),
             _gap(),
             Row(
@@ -807,8 +902,12 @@ class _SurveyScreenState extends State<SurveyScreen> {
                   child: ImagePickerWidget(
                     label: 'Right Side',
                     image: _rightSidePhoto,
+                    imageUrl: _rightSidePhotoUrl,
                     height: 130,
-                    onImageChanged: (f) => setState(() => _rightSidePhoto = f),
+                    onImageChanged: (f) => setState(() {
+                      _rightSidePhoto = f;
+                      if (f == null) _rightSidePhotoUrl = null;
+                    }),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -816,8 +915,12 @@ class _SurveyScreenState extends State<SurveyScreen> {
                   child: ImagePickerWidget(
                     label: 'Left Side',
                     image: _leftSidePhoto,
+                    imageUrl: _leftSidePhotoUrl,
                     height: 130,
-                    onImageChanged: (f) => setState(() => _leftSidePhoto = f),
+                    onImageChanged: (f) => setState(() {
+                      _leftSidePhoto = f;
+                      if (f == null) _leftSidePhotoUrl = null;
+                    }),
                   ),
                 ),
               ],
@@ -988,8 +1091,11 @@ class _SurveyScreenState extends State<SurveyScreen> {
     }
 
     final upperFloors = _upperFloors;
-    final photoCount =
-        [_frontPhoto, _rightSidePhoto, _leftSidePhoto].whereType<File>().length;
+    final photoCount = [
+      _frontPhoto ?? _frontPhotoUrl,
+      _rightSidePhoto ?? _rightSidePhotoUrl,
+      _leftSidePhoto ?? _leftSidePhotoUrl,
+    ].where((p) => p != null && p != '').length;
 
     return Column(
       children: [
@@ -1099,14 +1205,25 @@ class _SurveyScreenState extends State<SurveyScreen> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppColors.headerGradient),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Tauru App', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
-            Text('Property Survey', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text(
+              _isEdit ? 'Edit Survey #${widget.initial!.id}' : 'Tauru App',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19),
+            ),
+            Text(
+              _isEdit ? 'Update and save changes' : 'Property Survey',
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
           ],
         ),
-        actions: [
+        actions: _isEdit ? null : [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'My surveys',
+            onPressed: _isSubmitting ? null : _openHistory,
+          ),
           IconButton(
             icon: const Icon(Icons.restart_alt),
             tooltip: 'New survey',
@@ -1222,7 +1339,9 @@ class _SurveyScreenState extends State<SurveyScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  isLast ? 'Submit Survey' : 'Next: ${_steps[_currentStep + 1].label}',
+                                  isLast
+                                      ? (_isEdit ? 'Save Changes' : 'Submit Survey')
+                                      : 'Next: ${_steps[_currentStep + 1].label}',
                                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(width: 8),
@@ -1241,6 +1360,14 @@ class _SurveyScreenState extends State<SurveyScreen> {
 }
 
 // ── Supporting widgets ──────────────────────────────────────────────────────
+
+class _PhotoSlot {
+  final String label;
+  final File? Function() file;
+  final void Function(String url) uploaded;
+
+  const _PhotoSlot(this.label, this.file, this.uploaded);
+}
 
 class _StepHeader extends StatelessWidget {
   final int current;
