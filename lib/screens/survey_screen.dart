@@ -132,6 +132,10 @@ class _SurveyScreenState extends State<SurveyScreen> {
   bool _showDrone = true;
   bool _isLocating = false;
 
+  // Already-surveyed houses shown on the map; loaded when the map first opens.
+  List<MapHouse>? _mapHouses;
+  bool _loadingHouses = false;
+
   int _currentStep = 0;
   int _maxReachedStep = 0;
   bool _isSubmitting = false;
@@ -301,6 +305,52 @@ class _SurveyScreenState extends State<SurveyScreen> {
     }
   }
 
+  Future<void> _loadMapHouses({bool force = false}) async {
+    if (_loadingHouses || (_mapHouses != null && !force)) return;
+    setState(() => _loadingHouses = true);
+    try {
+      final houses = await SurveyService.fetchMapHouses();
+      if (!mounted) return;
+      // The record being edited is the pin itself, not a separate house.
+      final editingId = widget.initial?.id;
+      setState(() => _mapHouses = houses.where((h) => h.id != editingId).toList());
+    } catch (_) {
+      if (mounted) _showSnack('Could not load surveyed houses.', AppColors.warning);
+    } finally {
+      if (mounted) setState(() => _loadingHouses = false);
+    }
+  }
+
+  List<Marker> _houseMarkers() {
+    return [
+      for (final h in _mapHouses ?? const <MapHouse>[])
+        Marker(
+          point: LatLng(h.latitude, h.longitude),
+          width: 22,
+          height: 22,
+          child: GestureDetector(
+            onTap: () => _showSnack(
+              'Already surveyed: House ${h.houseNo ?? '—'} · ${h.ownerName ?? 'Unnamed owner'}'
+              '${h.wardNoOrName != null ? ' · Ward ${h.wardNoOrName}' : ''}',
+              AppColors.primaryDark,
+            ),
+            // Same red dot as the portal's map; the padding enlarges the tap target.
+            child: Center(
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEA4335),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
   // ── Navigation ─────────────────────────────────────────────────────────────
 
   bool _validateCurrentStep() {
@@ -450,6 +500,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
         Navigator.of(context).pop(true);
         return;
       }
+      // The new house should appear on the map next time it's opened.
+      _mapHouses = null;
       await _showSuccessDialog();
       _resetForm();
     } finally {
@@ -1017,7 +1069,10 @@ class _SurveyScreenState extends State<SurveyScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => setState(() => _showMap = !_showMap),
+                onPressed: () {
+                  setState(() => _showMap = !_showMap);
+                  if (_showMap) _loadMapHouses();
+                },
                 icon: Icon(_showMap ? Icons.keyboard_arrow_up : Icons.map_outlined, size: 18),
                 label: Text(_showMap ? 'Hide Map' : 'Pick on Map'),
                 style: OutlinedButton.styleFrom(
@@ -1065,7 +1120,17 @@ class _SurveyScreenState extends State<SurveyScreen> {
                           // Outside the drone coverage tiles 404; just leave them blank.
                           errorTileCallback: (_, __, ___) {},
                         ),
+                      MarkerLayer(markers: _houseMarkers()),
                     ],
+                  ),
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: _HouseCountChip(
+                      loading: _loadingHouses,
+                      count: _mapHouses?.length,
+                      onRetry: () => _loadMapHouses(force: true),
+                    ),
                   ),
                   Positioned(
                     top: 10,
@@ -1393,6 +1458,52 @@ class _SurveyScreenState extends State<SurveyScreen> {
 }
 
 // ── Supporting widgets ──────────────────────────────────────────────────────
+
+class _HouseCountChip extends StatelessWidget {
+  final bool loading;
+  final int? count;
+  final VoidCallback onRetry;
+
+  const _HouseCountChip({required this.loading, required this.count, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = !loading && count == null;
+    return GestureDetector(
+      onTap: failed ? onRetry : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loading)
+              const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
+            else
+              Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(color: Color(0xFFEA4335), shape: BoxShape.circle),
+              ),
+            const SizedBox(width: 6),
+            Text(
+              loading
+                  ? 'Loading houses…'
+                  : failed
+                  ? 'Tap to retry'
+                  : '$count surveyed',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryDark),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _PhotoSlot {
   final String label;

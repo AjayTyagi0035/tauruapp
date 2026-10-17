@@ -89,6 +89,20 @@ class SurveyService {
     );
   }
 
+  /// Locations of all Tauru records that have GPS (for map markers).
+  static Future<List<MapHouse>> fetchMapHouses() async {
+    final response = await http
+        .get(ApiConfig.uri('/api/tauru/map'))
+        .timeout(ApiConfig.timeout);
+    if (response.statusCode != 200) {
+      throw Exception(_errorFrom(response) ?? 'Failed to load map houses');
+    }
+    return (jsonDecode(response.body) as List)
+        .map((e) => MapHouse.fromJson(e as Map<String, dynamic>))
+        .whereType<MapHouse>()
+        .toList();
+  }
+
   static String? _errorFrom(http.Response response) {
     try {
       return (jsonDecode(response.body) as Map<String, dynamic>)['error']
@@ -96,6 +110,42 @@ class SurveyService {
     } catch (_) {
       return null;
     }
+  }
+}
+
+/// An already-surveyed house shown as a marker on the map.
+class MapHouse {
+  final int id;
+  final double latitude;
+  final double longitude;
+  final String? ownerName;
+  final String? houseNo;
+  final String? wardNoOrName;
+
+  const MapHouse({
+    required this.id,
+    required this.latitude,
+    required this.longitude,
+    this.ownerName,
+    this.houseNo,
+    this.wardNoOrName,
+  });
+
+  /// Returns null for rows without a usable id or position.
+  static MapHouse? fromJson(Map<String, dynamic> json) {
+    double? d(dynamic v) => v is num ? v.toDouble() : double.tryParse('$v');
+    final id = int.tryParse('${json['id']}');
+    final lat = d(json['latitude']);
+    final lng = d(json['longitude']);
+    if (id == null || lat == null || lng == null) return null;
+    return MapHouse(
+      id: id,
+      latitude: lat,
+      longitude: lng,
+      ownerName: json['ownerName']?.toString(),
+      houseNo: json['houseNo']?.toString(),
+      wardNoOrName: json['wardNoOrName']?.toString(),
+    );
   }
 }
 
